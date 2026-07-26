@@ -36,12 +36,13 @@ function New-CommandDataFile {
     [OutputType([System.IO.FileInfo])]
     [CmdletBinding()]
     param(
+        [ValidateScript({ Test-Path $_ })]
         [string]$OutputPath = './' # Default is current directory
     )
 
     $builtinModulePath = Microsoft.PowerShell.Management\Join-Path $PSHOME 'Modules'
     if (-not (Microsoft.PowerShell.Management\Test-Path $builtinModulePath)) {
-        throw new "$builtinModulePath does not exist! Cannot create command data file."
+        throw "$builtinModulePath does not exist! Cannot create command data file."
     }
 
     ## Get the PowerShell edition, OS, and platform to create a unique file name for the JSON file
@@ -76,6 +77,10 @@ function New-CommandDataFile {
     foreach ($module in $modules) {
         Microsoft.PowerShell.Utility\Write-Verbose "Processing module $module"
         $commands = Microsoft.PowerShell.Core\Get-Command -Module $module
+        if (-not $commands) {
+            Microsoft.PowerShell.Utility\Write-Error "No commands found for module '$module'; skipping."
+            continue
+        }
         $shortCommands = $commands |
             Microsoft.PowerShell.Utility\Select-Object -Property Name,
                 @{Label = 'CommandType'; Expression = { $_.CommandType.ToString() } },
